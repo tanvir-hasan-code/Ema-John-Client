@@ -7,57 +7,54 @@ import {
 import Cart from "../Cart/Cart";
 import Product from "../Product/Product";
 import "./Shop.css";
-import { Link } from "react-router-dom";
+import { Link, useLoaderData } from "react-router-dom";
 
 const Shop = () => {
+    // const carts = useLoaderData();
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [itemPerPage, setItemPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(0);
   const [count, setCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true); 
 
   const numberOfPages = Math.ceil(count / itemPerPage);
   const pages = [...Array(numberOfPages).keys()];
 
+
   useEffect(() => {
+    setIsLoading(true); 
     fetch(
       `https://b9-ema-john-pagination-server-start.vercel.app/products?page=${currentPage}&size=${itemPerPage}`
     )
       .then((res) => res.json())
-      .then((data) => setProducts(data));
+      .then((data) => {
+        setProducts(data);
+        setIsLoading(false); 
+      });
   }, [currentPage, itemPerPage]);
 
- 
+
   useEffect(() => {
     fetch("https://b9-ema-john-pagination-server-start.vercel.app/productCount")
       .then((res) => res.json())
       .then((data) => setCount(data.count));
   }, []);
 
+  
   useEffect(() => {
     const storedCart = getShoppingCart();
-    const storedIds = Object.keys(storedCart);
-    
-
-    if (storedIds.length === 0) {
-        setCart([]);
-        return;
+    const savedCart = [];
+    for (const id in storedCart) {
+      const addedProduct = products.find((product) => product._id === id);
+      if (addedProduct) {
+        const quantity = storedCart[id];
+        addedProduct.quantity = quantity;
+        savedCart.push(addedProduct);
+      }
     }
-
-    fetch('https://b9-ema-john-pagination-server-start.vercel.app/productsByIds', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(storedIds),
-    })
-    .then(res => res.json())
-    .then(data => {
-        const savedCart = data.map(product => {
-            const quantity = storedCart[product._id];
-            return { ...product, quantity };
-        });
-        setCart(savedCart);
-    });
-  }, []); 
+    setCart(savedCart);
+  }, [products]); 
 
   const handleAddToCart = (product) => {
     let newCart = [];
@@ -100,13 +97,16 @@ const Shop = () => {
   return (
     <div className="shop-container">
       <div className="products-container">
-        {products.map((product) => (
-          <Product
-            key={product._id}
-            product={product}
-            handleAddToCart={handleAddToCart}
-          ></Product>
-        ))}
+        {
+          isLoading ? <p>Loading...</p> : 
+          products.map((product) => (
+            <Product
+              key={product._id}
+              product={product}
+              handleAddToCart={handleAddToCart}
+            ></Product>
+          ))
+        }
       </div>
       <div className="cart-container">
         <Cart cart={cart} handleClearCart={handleClearCart}>
